@@ -171,7 +171,7 @@ export default function HomePage() {
               <a className="transition hover:text-white" href="#supplier-check">
                 Supplier Check
               </a>
-              <a className="transition hover:text-white" href="#translator">
+              <a className="transition hover:text-white" href="/translator">
                 Translator
               </a>
               <a className="transition hover:text-white" href="#map">
@@ -442,9 +442,7 @@ export default function HomePage() {
                   id={
                     module.title === "Supplier Check"
                       ? "supplier-check"
-                      : module.title === "Trade Translator"
-                        ? "translator"
-                        : undefined
+                      : undefined
                   }
                   key={module.title}
                 >
@@ -458,7 +456,7 @@ export default function HomePage() {
                     </p>
                     <a
                       className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-teal-700"
-                      href="#"
+                      href={module.title === "Trade Translator" ? "/translator" : "#"}
                     >
                       {module.action}
                       <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />

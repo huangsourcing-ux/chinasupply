@@ -24,10 +24,10 @@ Install dependencies:
 pnpm install
 ```
 
-CI and Vercel can install dependencies with:
+CI and Vercel should install from the committed lockfile:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 Create local environment variables:

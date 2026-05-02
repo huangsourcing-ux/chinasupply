@@ -198,28 +198,20 @@ function getSourceInstruction(messageSource: "auto" | "supplier" | "buyer") {
 - Buyer-intent phrases such as "I want to buy something" or "I want to ask for a lower MOQ" should be composed into supplier-ready Chinese.`;
 }
 
-export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
-  const parsed = analyzeRequestSchema.safeParse(body);
+function buildAnalysisPrompt({
+  input,
+  signalReferences,
+  sourceInstruction,
+  isRetry
+}: {
+  input: string;
+  signalReferences: string;
+  sourceInstruction: string;
+  isRetry: boolean;
+}) {
+  return `Analyze this sourcing communication request under Chinese supplier context:
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Please provide a message to analyze." },
-      { status: 400 }
-    );
-  }
-
-  try {
-    const signalReferences = formatSignalReferences(parsed.data.input);
-    const sourceInstruction = getSourceInstruction(parsed.data.messageSource);
-    const outputSchema = getCommunicationAnalysisSchema(parsed.data.messageSource);
-
-    const { output } = await generateText({
-      model: process.env.AI_MODEL ?? "deepseek/deepseek-v4-flash",
-      system: systemPrompt,
-      prompt: `Analyze this sourcing communication request under Chinese supplier context:
-
-${parsed.data.input}
+${input}
 
 ${sourceInstruction}
 
@@ -240,15 +232,76 @@ Output perspective rule:
 - In compose mode, suggestedReplyZh should be polished and complete, not a bare repetition of the user input.
 
 Use these internal sourcing signal references when relevant. They are examples and decision aids, not content to expose directly:
-${signalReferences}`,
-      temperature: 0.2,
-      maxOutputTokens: 1200,
-      output: Output.object({
-        name: "SupplierCommunicationAnalysis",
-        description:
-          "Structured sourcing communication analysis and reply recommendation.",
-        schema: outputSchema
-      })
+${signalReferences}
+
+${isRetry ? "Retry instruction: The previous attempt did not produce a valid structured object. Return only the required schema fields. Every string field must be non-empty. No markdown, no explanation outside the object." : ""}`;
+}
+
+async function generateAnalysis({
+  input,
+  outputSchema,
+  signalReferences,
+  sourceInstruction
+}: {
+  input: string;
+  outputSchema: ReturnType<typeof getCommunicationAnalysisSchema>;
+  signalReferences: string;
+  sourceInstruction: string;
+}) {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const { output } = await generateText({
+        model: process.env.AI_MODEL ?? "deepseek/deepseek-v4-flash",
+        system: systemPrompt,
+        prompt: buildAnalysisPrompt({
+          input,
+          signalReferences,
+          sourceInstruction,
+          isRetry: attempt > 1
+        }),
+        temperature: attempt === 1 ? 0.2 : 0,
+        maxOutputTokens: 1200,
+        maxRetries: 1,
+        output: Output.object({
+          name: "SupplierCommunicationAnalysis",
+          description:
+            "Structured sourcing communication analysis and reply recommendation.",
+          schema: outputSchema
+        })
+      });
+
+      return output;
+    } catch (error) {
+      lastError = error;
+      console.warn(`Translator analysis attempt ${attempt} failed`, error);
+    }
+  }
+
+  throw lastError;
+}
+
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => null);
+  const parsed = analyzeRequestSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Please provide a message to analyze." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const signalReferences = formatSignalReferences(parsed.data.input);
+    const sourceInstruction = getSourceInstruction(parsed.data.messageSource);
+    const outputSchema = getCommunicationAnalysisSchema(parsed.data.messageSource);
+    const output = await generateAnalysis({
+      input: parsed.data.input,
+      outputSchema,
+      signalReferences,
+      sourceInstruction
     });
 
     return NextResponse.json(output);

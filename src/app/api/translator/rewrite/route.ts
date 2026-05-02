@@ -32,21 +32,18 @@ const styleInstructions = {
     "Make it push back on the supplier's position, ask for confirmation or improvement, and keep buyer leverage."
 };
 
-export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
-  const parsed = rewriteRequestSchema.safeParse(body);
+async function generateRewrite({
+  suggestedReplyZh,
+  suggestedReplyEn,
+  style
+}: z.infer<typeof rewriteRequestSchema>) {
+  let lastError: unknown;
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "A valid reply and rewrite style are required." },
-      { status: 400 }
-    );
-  }
-
-  try {
-    const { output } = await generateText({
-      model: process.env.AI_MODEL ?? "deepseek/deepseek-v4-flash",
-      system: `You rewrite China sourcing buyer messages.
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const { output } = await generateText({
+        model: process.env.AI_MODEL ?? "deepseek/deepseek-v4-flash",
+        system: `You rewrite China sourcing buyer messages.
 
 Rules:
 - The user is the overseas buyer.
@@ -60,23 +57,50 @@ Rules:
 - Even for push back, sound like a buyer negotiating in chat, not a complaint letter.
 - Avoid "您好", "Dear", "Hello", and "Thank you for your inquiry" unless the original message clearly asks for formal style.
 - Return only structured data that matches the schema.`,
-      prompt: `Rewrite this buyer-to-supplier message.
+        prompt: `Rewrite this buyer-to-supplier message.
 
-Style: ${styleInstructions[parsed.data.style]}
+Style: ${styleInstructions[style]}
 
 Current Chinese message:
-${parsed.data.suggestedReplyZh}
+${suggestedReplyZh}
 
 Current English reference:
-${parsed.data.suggestedReplyEn}`,
-      temperature: 0.2,
-      maxOutputTokens: 500,
-      output: Output.object({
-        name: "RewrittenSupplierMessage",
-        description: "Rewritten buyer-to-supplier message and English reference.",
-        schema: rewriteResponseSchema
-      })
-    });
+${suggestedReplyEn}
+
+${attempt > 1 ? "Retry instruction: Return only the required schema fields. Every string field must be non-empty. No markdown, no explanation outside the object." : ""}`,
+        temperature: attempt === 1 ? 0.2 : 0,
+        maxOutputTokens: 500,
+        maxRetries: 1,
+        output: Output.object({
+          name: "RewrittenSupplierMessage",
+          description: "Rewritten buyer-to-supplier message and English reference.",
+          schema: rewriteResponseSchema
+        })
+      });
+
+      return output;
+    } catch (error) {
+      lastError = error;
+      console.warn(`Translator rewrite attempt ${attempt} failed`, error);
+    }
+  }
+
+  throw lastError;
+}
+
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => null);
+  const parsed = rewriteRequestSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "A valid reply and rewrite style are required." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const output = await generateRewrite(parsed.data);
 
     return NextResponse.json(output);
   } catch (error) {

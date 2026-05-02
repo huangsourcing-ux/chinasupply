@@ -277,13 +277,13 @@ export default function TranslatorPage() {
 
       <section className="mx-auto grid max-w-7xl gap-6 px-5 py-8 sm:px-8 lg:grid-cols-[0.7fr_1.55fr] lg:px-12">
         <div className="rounded-md border border-neutral-200 bg-white p-5 shadow-[0_18px_70px_rgba(15,23,42,0.07)]">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-3">
             <div>
-              <h2 className="text-xl font-semibold tracking-tight">
-                Try your first supplier message
+              <h2 className="text-lg font-semibold tracking-tight">
+                Paste a supplier message
               </h2>
-              <p className="mt-1 text-sm text-neutral-600">
-                Chinese, English, or mixed notes are supported.
+              <p className="mt-1 text-sm leading-6 text-neutral-600">
+                We&apos;ll decode the intent and draft a reply.
               </p>
             </div>
           </div>
@@ -291,13 +291,13 @@ export default function TranslatorPage() {
           <label className="sr-only" htmlFor="supplier-message">
             Supplier message or buyer intent
           </label>
-          <div className="rounded-md border border-dashed border-teal-300 bg-gradient-to-b from-teal-50/70 to-white p-3 transition focus-within:border-teal-600 focus-within:ring-4 focus-within:ring-teal-100">
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-teal-900">
+          <div className="rounded-md border border-neutral-200 bg-neutral-50/60 p-3 transition focus-within:border-teal-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-teal-100">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-neutral-700">
               <MessageSquareText className="h-4 w-4" />
-              Paste supplier messages...
+              Message
             </div>
             <textarea
-              className="min-h-[128px] w-full resize-y border-0 bg-transparent text-base leading-7 outline-none placeholder:text-neutral-400"
+              className="min-h-[112px] w-full resize-y border-0 bg-transparent text-base leading-7 outline-none placeholder:text-neutral-400"
               id="supplier-message"
               onChange={(event) => setInput(event.target.value)}
               placeholder={`老板说这个价格不好做
@@ -305,26 +305,23 @@ We will try our best.
 I want to ask about MOQ.`}
               value={input}
             />
-            <div className="mt-3 border-t border-teal-100 pt-3">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
-                or try
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {examples.slice(0, 3).map((example, index) => (
-                  <button
-                    className="h-8 rounded-full border border-teal-200 bg-white px-3 text-xs font-semibold text-teal-900 transition hover:border-teal-500 hover:bg-teal-50"
-                    key={example.label}
-                    onClick={() => handleTryExample(index)}
-                    type="button"
-                  >
-                    {example.label}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
-          <div className="mt-3 text-sm text-neutral-500">{input.trim().length} characters</div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            <span className="text-neutral-500">{input.trim().length} characters</span>
+            <span className="text-neutral-300">•</span>
+            <span className="text-neutral-500">Try</span>
+            {examples.slice(0, 3).map((example, index) => (
+              <button
+                className="font-semibold text-teal-700 transition hover:text-teal-900"
+                key={example.label}
+                onClick={() => handleTryExample(index)}
+                type="button"
+              >
+                {example.label}
+              </button>
+            ))}
+          </div>
 
           <fieldset className="mt-4">
             <legend className="mb-2 text-sm font-semibold text-neutral-950">
@@ -359,9 +356,9 @@ I want to ask about MOQ.`}
             </div>
           )}
 
-          <div className="mt-5 flex justify-end">
+          <div className="mt-5">
             <Button
-              className="h-12 bg-teal-600 px-6 text-white hover:bg-teal-700"
+              className="h-11 w-full bg-teal-600 px-6 text-white hover:bg-teal-700"
               disabled={!canAnalyze}
               onClick={handleAnalyze}
               type="button"
